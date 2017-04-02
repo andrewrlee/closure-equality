@@ -1,4 +1,5 @@
-###Closure Equality
+Closure Equality
+------------------
 
 This is a small utility class to allow comparing java 8 closures.
 
@@ -26,6 +27,7 @@ The following test shows what can and cannot be achieved via this mechanism:
 @Test
     public void closuresWithSameStateAreEqual() {
         test(TestCollection.getAll(), TestCollection.getAll()).areEqual();   
+        test(TestCollection.getById("a"), TestCollection.getById("a")).areEqual();   
     }
     
     @Test
@@ -82,6 +84,34 @@ The following test shows what can and cannot be achieved via this mechanism:
         test(collection, collection).areEqual();   
     } 
 ```
+
+This is fine when you have control of the interface class as you can easily make it extend serializable. For other functions where you don't have
+access to the source code this approach is still possible but requires taking advantage of [this java 8 feature](http://stackoverflow.com/a/22808112/1089998) that allows you to cast the object to a intersection of multiple types, as shown below:
+
+```java
+    @Test
+    public void standardFunctionsCanWorkIfAssignedToIntersectionType() {
+        Consumer<String> collection = (Consumer<String> & Serializable) string -> {
+        };
+        test((Consumer<String> & Serializable)collection, (Consumer<String> & Serializable)collection).areEqual();   
+    }
+
+    @Test
+    public void serializableStandardFunctionsAreDifferentWithDifferentClosures() {
+        Consumer<String> collection1 = (Consumer<String> & Serializable) string -> {
+        };
+        String a = "hello";
+        Consumer<String> collection2 = (Consumer<String> & Serializable) string -> {
+            System.out.println(a);
+        };
+        test((Consumer<String> & Serializable)collection1, (Consumer<String> & Serializable)collection2)
+            .areDifferentBecause(
+                    "Impl method signatures do not match: [(Ljava/lang/String;)V] != [(Ljava/lang/String;Ljava/lang/String;)V]",
+                    "Lambda args do not match: [] != [hello]",
+                    "Impl methods do not match: [lambda$7] != [lambda$8]");   
+    }
+```
+
 
 This util class could be used in an argument matcher to verify that a specific closure was passed in.   
 

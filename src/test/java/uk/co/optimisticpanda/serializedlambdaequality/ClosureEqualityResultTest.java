@@ -6,6 +6,7 @@ import static uk.co.optimisticpanda.serializedlambdaequality.ClosureEqualityResu
 
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.function.Consumer;
 
 import org.junit.Test;
 
@@ -14,6 +15,7 @@ public class ClosureEqualityResultTest {
     @Test
     public void closuresWithSameStateAreEqual() {
         test(TestCollection.getAll(), TestCollection.getAll()).areEqual();   
+        test(TestCollection.getById("a"), TestCollection.getById("a")).areEqual();   
     }
     
     @Test
@@ -69,6 +71,28 @@ public class ClosureEqualityResultTest {
         TestCollection<String> collection = i -> "";
         test(collection, collection).areEqual();   
     } 
+    
+    @Test
+    public void standardFunctionsCanWorkIfAssignedToIntersectionType() {
+        Consumer<String> collection = (Consumer<String> & Serializable) string -> {
+        };
+        test((Consumer<String> & Serializable)collection, (Consumer<String> & Serializable)collection).areEqual();   
+    }
+
+    @Test
+    public void serializableStandardFunctionsAreDifferentWithDifferentClosures() {
+        Consumer<String> collection1 = (Consumer<String> & Serializable) string -> {
+        };
+        String a = "hello";
+        Consumer<String> collection2 = (Consumer<String> & Serializable) string -> {
+            System.out.println(a);
+        };
+        test((Consumer<String> & Serializable)collection1, (Consumer<String> & Serializable)collection2)
+            .areDifferentBecause(
+                    "Impl method signatures do not match: [(Ljava/lang/String;)V] != [(Ljava/lang/String;Ljava/lang/String;)V]",
+                    "Lambda args do not match: [] != [hello]",
+                    "Impl methods do not match: [lambda$7] != [lambda$8]");   
+    }
     
     private Check test(Serializable s1, Serializable s2) {
         return new Check(s1, s2);
