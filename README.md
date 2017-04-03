@@ -113,6 +113,27 @@ access to the source code this approach is still possible but requires taking ad
 ```
 
 
-This util class could be used in an argument matcher to verify that a specific closure was passed in.   
+A (simple) sample mockito matcher implementation exists `uk.co.optimisticpanda.serializedlambdaequality.LambdaMatcher<LAMBDA>`:   
 
+```java
+    @Test
+    public void checkMatcherWorksWhenStubbingAndVerifying() {
 
+        when(stuffer.query(serializedLambdaEq(getById("1")))).thenReturn(2);
+        
+        assertThat(stuffer.query(getById("1"))).isEqualTo(2);
+
+        verify(stuffer).query(serializedLambdaEq(getById("1")));
+    }
+    
+    @Test
+    public void checkMatcherFailsWhenVerifyingTheWrongLambda() {
+
+        stuffer.query(getById("1"));
+        
+        assertThatThrownBy(() -> 
+            verify(stuffer).query(serializedLambdaEq(getById("2"))))
+            .isInstanceOf(AssertionError.class)
+            .hasMessageContaining("Actual invocation has different arguments");
+    }
+```

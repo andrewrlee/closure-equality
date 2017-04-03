@@ -13,6 +13,9 @@ public class ClosureEqualityResult {
 
     private List<String> differences = new ArrayList<>();
 
+    private ClosureEqualityResult() {
+    }
+    
     public static ClosureEqualityResult check(Serializable serializable1, Serializable serializable2) {
         SerializedLambda lambda1 = toSerializedLambda(serializable1);
         SerializedLambda lambda2 = toSerializedLambda(serializable2);
@@ -28,16 +31,26 @@ public class ClosureEqualityResult {
                     .add(lambda1, lambda2, SerializedLambda::getFunctionalInterfaceMethodSignature, "functional interface method signatures do not match: [%s] != [%s]")                    ;
     }
 
-    private static SerializedLambda toSerializedLambda(Serializable serializable1) {
+    private static SerializedLambda toSerializedLambda(Serializable serializable) {
         try {
-            Method replaceMethod = serializable1.getClass().getDeclaredMethod("writeReplace");
+            Method replaceMethod = serializable.getClass().getDeclaredMethod("writeReplace");
             replaceMethod.setAccessible(true);
-            SerializedLambda lambda = (SerializedLambda) replaceMethod.invoke(serializable1);
+            Object replacedObject = replaceMethod.invoke(serializable);
+            
+            if (!(replacedObject instanceof SerializedLambda)) {
+                throw new IllegalArgumentException("serialized object is not a lambda, was: " + replacedObject);
+            }
+            
+            SerializedLambda lambda = SerializedLambda.class.cast(replacedObject);
             return lambda;
+
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException("No write replace method on class: " + serializable.getClass(), e);
         } catch (Exception e) {
             throw new RuntimeException("Problem creating serialized lambda", e);
         }
-        
     }
 
     private <T, R> ClosureEqualityResult add(T t1, T t2, Function<T, R> f, String message) {
